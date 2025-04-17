@@ -18,7 +18,7 @@ openai.api_key = OPENAI_API_KEY
 # URL do webhook (substitua pelo seu domínio real)
 webhook_url = f"https://coffeegpt-telegram.onrender.com/{TELEGRAM_TOKEN}"
 
-# Configura o webhook
+# Configura o webhook do Telegram
 bot.set_webhook(url=webhook_url)
 
 app = Flask(__name__)
@@ -39,8 +39,8 @@ def respond():
     user_message = update.message.text
 
     try:
-        # Chama a API do OpenAI usando a nova interface
-        response = openai.chat_completions.create(
+        # Chama a API do OpenAI utilizando a nova interface
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",  # ou o modelo desejado
             messages=[
                 {"role": "system", "content": "Você é o CoffeeGPT, um assistente simpático para produtores de café."},
@@ -66,4 +66,5 @@ def webhook_status():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
