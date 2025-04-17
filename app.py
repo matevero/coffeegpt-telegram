@@ -31,6 +31,9 @@ def respond():
             ]
         )
         
+        # Verificar o conteúdo da resposta antes de enviar
+        print("Resposta recebida:", response)
+
         # Obter a resposta do modelo
         response_text = response['choices'][0]['message']['content']
         bot.send_message(chat_id=chat_id, text=response_text)
@@ -50,5 +53,6 @@ def webhook_status():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
