@@ -3,6 +3,7 @@ import openai
 import os
 import telegram
 from dotenv import load_dotenv
+import requests
 import traceback
 
 # Carrega variáveis do .env
@@ -14,6 +15,20 @@ bot = telegram.Bot(token=TELEGRAM_TOKEN)
 openai.api_key = OPENAI_API_KEY
 
 app = Flask(__name__)
+
+# Função para configurar o webhook do Telegram
+def set_webhook():
+    webhook_url = f"https://coffeegpt-telegram.onrender.com/{TELEGRAM_TOKEN}"  # URL do webhook do seu bot
+    set_webhook_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook?url={webhook_url}"
+
+    response = requests.get(set_webhook_url)
+    if response.status_code == 200:
+        print("Webhook configurado com sucesso!")
+    else:
+        print(f"Erro ao configurar o webhook: {response.text}")
+
+# Configurando o webhook assim que a aplicação iniciar
+set_webhook()
 
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 def respond():
@@ -56,3 +71,4 @@ def webhook_status():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
