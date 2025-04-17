@@ -21,6 +21,9 @@ def respond():
     chat_id = update.message.chat.id
     user_message = update.message.text
 
+    # Log da mensagem recebida
+    print(f"Mensagem recebida: {user_message}")
+
     try:
         # Chamada à API de chat da OpenAI
         response = openai.chat_completions.create(
@@ -30,8 +33,8 @@ def respond():
                 {"role": "user", "content": user_message}
             ]
         )
-        
-        # Verificar e imprimir a resposta recebida
+
+        # Log da resposta da OpenAI
         print("Resposta recebida da OpenAI:", response)
 
         # Obter a resposta do modelo
@@ -42,7 +45,7 @@ def respond():
         # Log detalhado do erro
         error_message = f"Erro: {str(e)}\n{traceback.format_exc()}"
         bot.send_message(chat_id=chat_id, text="Eita, deu ruim aqui na mente do CoffeeGPT 😅")
-        print(error_message)
+        print("Erro detalhado:", error_message)
 
     return "ok"
 
@@ -53,4 +56,3 @@ def webhook_status():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
