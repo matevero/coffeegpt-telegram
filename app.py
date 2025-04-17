@@ -21,6 +21,7 @@ def respond():
     user_message = update.message.text
 
     try:
+        # Chamada à API do OpenAI
         completion = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -32,16 +33,16 @@ def respond():
         bot.send_message(chat_id=chat_id, text=response_text)
 
     except Exception as e:
+        # Enviar mensagem caso ocorra erro
         bot.send_message(chat_id=chat_id, text="Eita, deu ruim aqui na mente do CoffeeGPT 😅")
         print("Erro:", e)
 
     return "ok"
 
-@app.route("/webhook", methods=["POST"])
-def telegram_webhook():
-    # lógica aqui
-
-
+# Essa rota é opcional e pode ser usada para testes de verificação de status do webhook
+@app.route("/webhook", methods=["GET"])
+def webhook_status():
+    return "Webhook está funcionando!"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
