@@ -41,8 +41,7 @@ def respond():
 def telegram_webhook():
     # lógica aqui
 
-def index():
-    return "CoffeeGPT está no ar!"
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
