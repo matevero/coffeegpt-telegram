@@ -13,7 +13,7 @@ bot = telegram.Bot(token=TELEGRAM_TOKEN)
 openai.api_key = OPENAI_API_KEY
 
 # URL do webhook (substitua pelo seu domínio real)
-webhook_url = f"https://coffeegpt-telegram.onrender.com/{7105411303:AAFgfzIZAVEYSl7DEyeoZBsB-zaG8t3YhR4}"
+webhook_url = f"https://coffeegpt-telegram.onrender.com/{TELEGRAM_TOKEN}"
 
 # Configura o webhook
 bot.set_webhook(url=webhook_url)
