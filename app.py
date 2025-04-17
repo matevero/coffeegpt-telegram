@@ -43,5 +43,33 @@ def webhook():
         try:
             # Chamada à API do OpenAI com GPT-4
             completion = openai.ChatCompletion.create(
-                model="gpt-4",  # Us
+                model="gpt-4",  # Usando GPT-4
+                messages=[
+                    {"role": "system", "content": "Você é o CoffeeGPT, um assistente simpático para produtores de café."},
+                    {"role": "user", "content": user_message}
+                ]
+            )
+            response_text = completion.choices[0].message.content
+            bot.send_message(chat_id=chat_id, text=response_text)
+
+        except Exception as e:
+            bot.send_message(chat_id=chat_id, text="Eita, deu ruim aqui na mente do CoffeeGPT 😅")
+            print("Erro:", e)
+
+        return "ok"
+    
+    return "Webhook está funcionando!"
+
+# Rota opcional para verificar o status do webhook
+@app.route("/check_webhook", methods=["GET"])
+def check_webhook():
+    try:
+        webhook_info = bot.get_webhook_info()
+        return f"Informações do Webhook: {webhook_info}"
+    except Exception as e:
+        return f"Erro ao verificar o webhook: {e}"
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
 
