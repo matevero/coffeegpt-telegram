@@ -37,7 +37,10 @@ def respond():
 
     return "ok"
 
-@app.route("/", methods=["GET"])
+@app.route("/webhook", methods=["POST"])
+def telegram_webhook():
+    # lógica aqui
+
 def index():
     return "CoffeeGPT está no ar!"
 
