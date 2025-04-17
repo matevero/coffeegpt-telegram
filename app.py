@@ -3,6 +3,7 @@ import openai
 import os
 import telegram
 from dotenv import load_dotenv
+import traceback
 
 # Carrega variáveis do .env
 load_dotenv()
@@ -35,8 +36,10 @@ def respond():
         bot.send_message(chat_id=chat_id, text=response_text)
 
     except Exception as e:
+        # Log detalhado do erro
+        error_message = f"Erro: {str(e)}\n{traceback.format_exc()}"
         bot.send_message(chat_id=chat_id, text="Eita, deu ruim aqui na mente do CoffeeGPT 😅")
-        print("Erro:", e)
+        print(error_message)
 
     return "ok"
 
@@ -47,4 +50,5 @@ def webhook_status():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
