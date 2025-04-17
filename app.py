@@ -13,9 +13,6 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = Flask(__name__)
 
-# Memória por usuário
-user_history = {}
-
 @app.route("/webhook", methods=["POST"])
 def telegram_webhook():
     data = request.get_json()
@@ -25,29 +22,17 @@ def telegram_webhook():
         chat_id = data["message"]["chat"]["id"]
         user_msg = data["message"]["text"]
 
-        # Puxa o histórico ou inicia
-        history = user_history.get(chat_id, [])
-        history.append({"role": "user", "content": user_msg})
-
-        # Limita o histórico a últimas 10 mensagens (evita custo alto e falhas)
-        history = history[-10:]
-
         try:
-            # Adiciona instrução inicial se for nova conversa
-            messages = [{"role": "system", "content": "Você é o Zé do Café, um especialista simpático em café e agricultura."}] + history
-
             chat_completion = client.chat.completions.create(
                 model="gpt-3.5-turbo",
-                messages=messages
+                messages=[
+                    {"role": "system", "content": "Você é o Zé do Café, um especialista simpático em café e agricultura."},
+                    {"role": "user", "content": user_msg}
+                ]
             )
 
             reply = chat_completion.choices[0].message.content
             print("🤖 Resposta do Zé:", reply)
-
-            # Salva resposta no histórico
-            history.append({"role": "assistant", "content": reply})
-            user_history[chat_id] = history  # Atualiza
-
             send_message(chat_id, reply)
 
         except Exception as e:
