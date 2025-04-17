@@ -1,47 +1,58 @@
 from flask import Flask, request
-import openai
-import os
-import telegram
-from dotenv import load_dotenv
 import requests
-import traceback
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
 
-# Carrega variáveis do .env
+# Carrega as variáveis do .env
 load_dotenv()
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-bot = telegram.Bot(token=TELEGRAM_TOKEN)
-openai.api_key = OPENAI_API_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = Flask(__name__)
 
-# Configura automaticamente o webhook do Telegram
-def set_webhook():
-    webhook_url = f"https://coffeegpt-telegram.onrender.com/{TELEGRAM_TOKEN}"
-    response = requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/setWebhook?url={webhook_url}")
-    if response.status_code == 200:
-        print("✅ Webhook configurado com sucesso!")
-    else:
-        print(f"❌ Erro ao configurar o webhook: {response.text}")
+@app.route("/webhook", methods=["POST"])
+def telegram_webhook():
+    data = request.get_json()
+    print("📥 Mensagem recebida:", data)
 
-set_webhook()
+    # Verifica se é uma mensagem de texto válida
+    if "message" in data and "text" in data["message"]:
+        chat_id = data["message"]["chat"]["id"]
+        user_msg = data["message"]["text"]
 
-@app.route("/", methods=["GET"])
-def index():
-    return "CoffeeGPT está online!"
+        try:
+            # Envia a pergunta para a OpenAI
+            chat_completion = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "Você é o Zé do Café, um especialista simpático em café e agricultura."},
+                    {"role": "user", "content": user_msg}
+                ]
+            )
 
-@app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
-def respond():
-    update = telegram.Update.de_json(request.get_json(force=True), bot)
-    chat_id = update.message.chat.id
-    user_message = update.message.text
+            reply = chat_completion.choices[0].message.content
+            print("🤖 Resposta do Zé:", reply)
 
-    print(f"📥 Mensagem recebida: {user_message}")
+            # Envia a resposta para o usuário no Telegram
+            send_message(chat_id, reply)
 
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
+        except Exception as e:
+            print("❌ Erro:", e)
+            send_message(chat_id, "Eita, deu ruim aqui com a cabeça do Zé... tenta de novo depois 😅")
 
+    return "ok", 200
+
+def send_message(chat_id, text):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": text
+    }
+    requests.post(url, json=payload)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
