@@ -1,4 +1,4 @@
-from flask import Flask, request
+ffrom flask import Flask, request
 import openai
 import os
 import telegram
@@ -12,6 +12,12 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
 openai.api_key = OPENAI_API_KEY
 
+# URL do webhook (substitua pelo seu domínio real)
+webhook_url = f"https://coffeegpt-telegram.onrender.com/{7105411303:AAFgfzIZAVEYSl7DEyeoZBsB-zaG8t3YhR4}"
+
+# Configura o webhook
+bot.set_webhook(url=webhook_url)
+
 app = Flask(__name__)
 
 @app.route("/check_webhook", methods=["GET"])
@@ -21,7 +27,6 @@ def check_webhook():
         return f"Informações do Webhook: {webhook_info}"
     except Exception as e:
         return f"Erro ao verificar o webhook: {e}"
-
 
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 def respond():
@@ -48,7 +53,6 @@ def respond():
 
     return "ok"
 
-# Essa rota é opcional e pode ser usada para testes de verificação de status do webhook
 @app.route("/webhook", methods=["GET"])
 def webhook_status():
     return "Webhook está funcionando!"
