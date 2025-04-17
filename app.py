@@ -31,8 +31,8 @@ def respond():
             ]
         )
         
-        # Verificar o conteúdo da resposta antes de enviar
-        print("Resposta recebida:", response)
+        # Verificar e imprimir a resposta recebida
+        print("Resposta recebida da OpenAI:", response)
 
         # Obter a resposta do modelo
         response_text = response['choices'][0]['message']['content']
@@ -53,6 +53,4 @@ def webhook_status():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
-
 
