@@ -14,6 +14,15 @@ openai.api_key = OPENAI_API_KEY
 
 app = Flask(__name__)
 
+@app.route("/check_webhook", methods=["GET"])
+def check_webhook():
+    try:
+        webhook_info = bot.get_webhook_info()
+        return f"Informações do Webhook: {webhook_info}"
+    except Exception as e:
+        return f"Erro ao verificar o webhook: {e}"
+
+
 @app.route(f"/{TELEGRAM_TOKEN}", methods=["POST"])
 def respond():
     update = telegram.Update.de_json(request.get_json(force=True), bot)
