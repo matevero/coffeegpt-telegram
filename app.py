@@ -40,17 +40,15 @@ def respond():
     user_message = update.message.text
 
     try:
-        # Chama a API do OpenAI utilizando a nova interface
-        response = openai.ChatCompletion.create(
+        # Chama a nova API do OpenAI (alterado para a nova interface)
+        response = openai.completions.create(
             model="gpt-3.5-turbo",  # ou o modelo desejado
-            messages=[
-                {"role": "system", "content": "Você é o CoffeeGPT, um assistente simpático para produtores de café."},
-                {"role": "user", "content": user_message}
-            ]
+            prompt=user_message,  # Apenas passando o texto do usuário
+            max_tokens=150  # Ajuste conforme necessário
         )
 
         # Obtém a resposta da API
-        response_text = response['choices'][0]['message']['content']
+        response_text = response['choices'][0]['text'].strip()
         bot.send_message(chat_id=chat_id, text=response_text)
 
     except Exception as e:
