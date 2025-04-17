@@ -3,6 +3,7 @@ import openai
 import os
 import telegram
 from dotenv import load_dotenv
+import traceback
 
 # Carrega variáveis do .env
 load_dotenv()
@@ -15,7 +16,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 bot = telegram.Bot(token=TELEGRAM_TOKEN)
 openai.api_key = OPENAI_API_KEY
 
-# URL do webhook (substitua pelo seu domínio real)
+# URL do webhook
 webhook_url = f"https://coffeegpt-telegram.onrender.com/{TELEGRAM_TOKEN}"
 
 # Configura o webhook do Telegram
@@ -53,8 +54,10 @@ def respond():
         bot.send_message(chat_id=chat_id, text=response_text)
 
     except Exception as e:
-        # Caso ocorra um erro, envia uma mensagem de erro
-        bot.send_message(chat_id=chat_id, text="Eita, deu ruim aqui na mente do CoffeeGPT 😅")
+        # Caso ocorra um erro, envia uma mensagem de erro e loga o erro completo
+        error_message = f"Eita, deu ruim aqui na mente do CoffeeGPT 😅\nErro: {str(e)}\n"
+        error_message += f"Detalhes: {traceback.format_exc()}"
+        bot.send_message(chat_id=chat_id, text=error_message)
         print("Erro:", e)
 
     return "ok"
@@ -66,5 +69,6 @@ def webhook_status():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
