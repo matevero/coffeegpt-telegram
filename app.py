@@ -1,5 +1,6 @@
 from flask import Flask, request
 import requests
+import sqlite3
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
@@ -10,6 +11,43 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Inicializa o banco de dados SQLite
+def init_db():
+    conn = sqlite3.connect('memory.db')
+    c = conn.cursor()
+    # Cria a tabela se ela não existir
+    c.execute('''CREATE TABLE IF NOT EXISTS conversations (
+                    chat_id INTEGER PRIMARY KEY,
+                    message TEXT)''')
+    conn.commit()
+    conn.close()
+
+# Função para buscar o histórico de mensagens do banco de dados
+def get_memory(chat_id):
+    conn = sqlite3.connect('memory.db')
+    c = conn.cursor()
+    c.execute('SELECT message FROM conversations WHERE chat_id = ?', (chat_id,))
+    rows = c.fetchall()
+    conn.close()
+    # Retorna as mensagens armazenadas ou uma lista vazia
+    return [row[0] for row in rows] if rows else []
+
+# Função para salvar uma nova mensagem no banco de dados
+def save_message(chat_id, message):
+    conn = sqlite3.connect('memory.db')
+    c = conn.cursor()
+    # Verifica se já existe um histórico para o chat_id
+    c.execute('SELECT message FROM conversations WHERE chat_id = ?', (chat_id,))
+    if c.fetchone():
+        c.execute('UPDATE conversations SET message = message || ? WHERE chat_id = ?', (message, chat_id))
+    else:
+        c.execute('INSERT INTO conversations (chat_id, message) VALUES (?, ?)', (chat_id, message))
+    conn.commit()
+    conn.close()
+
+# Inicializa o banco de dados
+init_db()
 
 app = Flask(__name__)
 
@@ -22,17 +60,29 @@ def telegram_webhook():
         chat_id = data["message"]["chat"]["id"]
         user_msg = data["message"]["text"]
 
+        # Recupera o histórico de mensagens
+        memory = get_memory(chat_id)
+
+        # Adiciona a nova mensagem à memória
+        memory.append(f"User: {user_msg}")
+
         try:
+            # Chama a API da OpenAI com o histórico de mensagens
             chat_completion = client.chat.completions.create(
                 model="gpt-4",
                 messages=[
-                    {"role": "system", "content": "Você é o Zé do Café, um especialista simpático em café e agricultura."},
-                    {"role": "user", "content": user_msg}
-                ]
+                    {"role": "system", "content": "Você é o Zé do Café, um especialista simpático em café e agricultura."}
+                ] + [{"role": "user", "content": msg} for msg in memory]
             )
 
+            # Obtém a resposta da IA
             reply = chat_completion.choices[0].message.content
             print("🤖 Resposta do Zé:", reply)
+
+            # Salva a resposta do bot no banco de dados
+            save_message(chat_id, f"Assistant: {reply}")
+
+            # Envia a resposta ao usuário
             send_message(chat_id, reply)
 
         except Exception as e:
