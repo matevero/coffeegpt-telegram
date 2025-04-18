@@ -24,7 +24,7 @@ def telegram_webhook():
 
         try:
             chat_completion = client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4",
                 messages=[
                     {"role": "system", "content": "Você é o Zé do Café, um especialista simpático em café e agricultura."},
                     {"role": "user", "content": user_msg}
