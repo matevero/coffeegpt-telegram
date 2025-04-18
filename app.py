@@ -1,55 +1,32 @@
 from flask import Flask, request
 import requests
-import sqlite3
 from openai import OpenAI
 import os
+import psycopg2
 from dotenv import load_dotenv
 
-# Carrega as variáveis do .env
+# Carrega variáveis do .env
 load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DATABASE_URL = os.getenv("DATABASE_URL")
+
 client = OpenAI(api_key=OPENAI_API_KEY)
-
-# Inicializa o banco de dados SQLite
-def init_db():
-    conn = sqlite3.connect('memory.db')
-    c = conn.cursor()
-    # Cria a tabela se ela não existir
-    c.execute('''CREATE TABLE IF NOT EXISTS conversations (
-                    chat_id INTEGER PRIMARY KEY,
-                    message TEXT)''')
-    conn.commit()
-    conn.close()
-
-# Função para buscar o histórico de mensagens do banco de dados
-def get_memory(chat_id):
-    conn = sqlite3.connect('memory.db')
-    c = conn.cursor()
-    c.execute('SELECT message FROM conversations WHERE chat_id = ?', (chat_id,))
-    rows = c.fetchall()
-    conn.close()
-    # Retorna as mensagens armazenadas ou uma lista vazia
-    return [row[0] for row in rows] if rows else []
-
-# Função para salvar uma nova mensagem no banco de dados
-def save_message(chat_id, message):
-    conn = sqlite3.connect('memory.db')
-    c = conn.cursor()
-    # Verifica se já existe um histórico para o chat_id
-    c.execute('SELECT message FROM conversations WHERE chat_id = ?', (chat_id,))
-    if c.fetchone():
-        c.execute('UPDATE conversations SET message = message || ? WHERE chat_id = ?', (message, chat_id))
-    else:
-        c.execute('INSERT INTO conversations (chat_id, message) VALUES (?, ?)', (chat_id, message))
-    conn.commit()
-    conn.close()
-
-# Inicializa o banco de dados
-init_db()
-
 app = Flask(__name__)
+
+# Conexão com o PostgreSQL
+conn = psycopg2.connect(DATABASE_URL)
+cursor = conn.cursor()
+
+# Cria a tabela se não existir
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS memoria (
+        chat_id BIGINT PRIMARY KEY,
+        historico TEXT
+    );
+""")
+conn.commit()
 
 @app.route("/webhook", methods=["POST"])
 def telegram_webhook():
@@ -60,29 +37,39 @@ def telegram_webhook():
         chat_id = data["message"]["chat"]["id"]
         user_msg = data["message"]["text"]
 
-        # Recupera o histórico de mensagens
-        memory = get_memory(chat_id)
+        # Recupera histórico
+        cursor.execute("SELECT historico FROM memoria WHERE chat_id = %s", (chat_id,))
+        result = cursor.fetchone()
+        historico = result[0] if result else ""
 
-        # Adiciona a nova mensagem à memória
-        memory.append(f"User: {user_msg}")
+        messages = [
+            {"role": "system", "content": "Você é o Zé do Café, um especialista simpático em café e agricultura."}
+        ]
+
+        if historico:
+            messages.append({"role": "user", "content": historico})
+
+        messages.append({"role": "user", "content": user_msg})
 
         try:
-            # Chama a API da OpenAI com o histórico de mensagens
             chat_completion = client.chat.completions.create(
                 model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "Você é o Zé do Café, um especialista simpático em café e agricultura."}
-                ] + [{"role": "user", "content": msg} for msg in memory]
+                messages=messages
             )
 
-            # Obtém a resposta da IA
             reply = chat_completion.choices[0].message.content
             print("🤖 Resposta do Zé:", reply)
 
-            # Salva a resposta do bot no banco de dados
-            save_message(chat_id, f"Assistant: {reply}")
+            # Atualiza histórico no banco
+            novo_historico = historico + "\n" + user_msg + "\n" + reply
+            cursor.execute("""
+                INSERT INTO memoria (chat_id, historico)
+                VALUES (%s, %s)
+                ON CONFLICT (chat_id)
+                DO UPDATE SET historico = EXCLUDED.historico;
+            """, (chat_id, novo_historico))
+            conn.commit()
 
-            # Envia a resposta ao usuário
             send_message(chat_id, reply)
 
         except Exception as e:
@@ -102,5 +89,6 @@ def send_message(chat_id, text):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
