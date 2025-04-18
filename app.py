@@ -82,21 +82,25 @@ def telegram_webhook():
         user_msg = data["message"].get("text", "")
         user_name = data["message"]["from"].get("first_name", "amigo")
 
-        name, city = get_user_info(chat_id)
+        name, city = get_user_info(chat_id)  # Busca as informações do usuário a cada mensagem
 
         if "meu nome é" in user_msg.lower():
-            nome = user_msg.split("meu nome é")[-1].strip().split()[0]
-            save_user_info(chat_id, name=nome)
-            send_message(chat_id, f"Beleza, {nome}! Vou lembrar de você.")
+            nome_parts = user_msg.split("meu nome é")[-1].strip().split()
+            if nome_parts:
+                nome = " ".join(nome_parts)
+                save_user_info(chat_id, name=nome)
+                send_message(chat_id, f"Beleza, {nome}! Vou lembrar de você.")
             return "ok", 200
 
         if "minha cidade é" in user_msg.lower():
-            cidade = user_msg.split("minha cidade é")[-1].strip().split()[0]
-            save_user_info(chat_id, city=cidade)
-            send_message(chat_id, f"Anotado, {cidade}! Vou usar isso pra previsão do tempo.")
+            cidade_parts = user_msg.split("minha cidade é")[-1].strip().split()
+            if cidade_parts:
+                cidade = " ".join(cidade_parts)
+                save_user_info(chat_id, city=cidade)
+                send_message(chat_id, f"Anotado, {cidade}! Vou usar isso pra previsão do tempo.")
             return "ok", 200
 
-        if "previsão do tempo" in user_msg.lower():
+        if "previsão do tempo" in user_msg.lower() or "vai chover essa semana" in user_msg.lower():
             if city:
                 forecast = get_weather(city)
                 send_message(chat_id, forecast)
@@ -133,5 +137,4 @@ def send_message(chat_id, text):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
 
