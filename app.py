@@ -15,7 +15,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Configure o Gemini
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-pro-vision')
+model = genai.GenerativeModel('gemini-pro-vision')  # Usando gemini-pro-vision para análise de fotos
 
 app = Flask(__name__)
 
@@ -106,6 +106,33 @@ def telegram_webhook():
                 send_message(chat_id, forecast)
             else:
                 send_message(chat_id, "Você pode me dizer sua cidade? Ex: minha cidade é Machado.")
+            return "ok", 200
+
+        if "photo" in data["message"]:
+            try:
+                file_id = data["message"]["photo"][-1]["file_id"]
+                url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getFile?file_id={file_id}"
+                response = requests.get(url).json()
+                file_path = response["result"]["file_path"]
+                image_url = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
+                image_response = requests.get(image_url)
+                image_bytes = image_response.content
+                mime_type = image_response.headers["Content-Type"]
+
+                prompt_image = f"O que você pode me dizer sobre esta imagem? {user_msg if user_msg else ''}"
+                response_gemini = model.generate_content([
+                    {"role": "user", "parts": [
+                        {"text": prompt_image},
+                        {"image": image_bytes, "mime_type": mime_type}
+                    ]}
+                ])
+                reply = response_gemini.text.strip()
+                print("🤖 Resposta da análise da imagem:", reply)
+                send_message(chat_id, reply)
+
+            except Exception as e:
+                print("❌ Erro ao analisar a imagem:", e)
+                send_message(chat_id, "Eita, não consegui analisar essa imagem 😅")
             return "ok", 200
 
         prompt = f"Você é o Zé do Café, um especialista simpático em café e agricultura. "
