@@ -15,7 +15,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Configure o Gemini
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash')
+model = genai.GenerativeModel('gemini-pro-vision')
 
 app = Flask(__name__)
 
