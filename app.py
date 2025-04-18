@@ -2,31 +2,30 @@ from flask import Flask, request
 import requests
 from openai import OpenAI
 import os
-import psycopg2
 from dotenv import load_dotenv
 
-# Carrega variáveis do .env
+# Carrega as variáveis do .env
 load_dotenv()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-DATABASE_URL = os.getenv("DATABASE_URL")
-
+OPENWEATHERMAP_API_KEY = os.getenv("OPENWEATHERMAP_API_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)
+
 app = Flask(__name__)
 
-# Conexão com o PostgreSQL
-conn = psycopg2.connect(DATABASE_URL)
-cursor = conn.cursor()
-
-# Cria a tabela se não existir
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS memoria (
-        chat_id BIGINT PRIMARY KEY,
-        historico TEXT
-    );
-""")
-conn.commit()
+# Função para pegar a previsão do tempo
+def get_weather(city):
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHERMAP_API_KEY}&lang=pt_br&units=metric"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        clima = data["weather"][0]["description"]
+        temp = data["main"]["temp"]
+        sensacao = data["main"]["feels_like"]
+        return f"Em {city}, o clima agora é '{clima}' com temperatura de {temp}°C (sensação térmica de {sensacao}°C)."
+    else:
+        return "Não consegui encontrar o clima dessa cidade 😓"
 
 @app.route("/webhook", methods=["POST"])
 def telegram_webhook():
@@ -37,39 +36,32 @@ def telegram_webhook():
         chat_id = data["message"]["chat"]["id"]
         user_msg = data["message"]["text"]
 
-        # Recupera histórico
-        cursor.execute("SELECT historico FROM memoria WHERE chat_id = %s", (chat_id,))
-        result = cursor.fetchone()
-        historico = result[0] if result else ""
+        if "clima" in user_msg.lower() or "tempo" in user_msg.lower():
+            palavras = user_msg.split()
+            cidade = None
+            for i, palavra in enumerate(palavras):
+                if palavra.lower() in ["em", "de"] and i + 1 < len(palavras):
+                    cidade = palavras[i + 1]
+                    break
 
-        messages = [
-            {"role": "system", "content": "Você é o Zé do Café, um especialista simpático em café e agricultura."}
-        ]
-
-        if historico:
-            messages.append({"role": "user", "content": historico})
-
-        messages.append({"role": "user", "content": user_msg})
+            if cidade:
+                previsao = get_weather(cidade)
+                send_message(chat_id, previsao)
+            else:
+                send_message(chat_id, "Me diga o nome da cidade para eu ver o clima! Ex: 'Como está o clima em Campinas?'")
+            return "ok", 200
 
         try:
             chat_completion = client.chat.completions.create(
-                model="gpt-4",
-                messages=messages
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "Você é o Zé do Café, um especialista simpático em café e agricultura."},
+                    {"role": "user", "content": user_msg}
+                ]
             )
 
             reply = chat_completion.choices[0].message.content
             print("🤖 Resposta do Zé:", reply)
-
-            # Atualiza histórico no banco
-            novo_historico = historico + "\n" + user_msg + "\n" + reply
-            cursor.execute("""
-                INSERT INTO memoria (chat_id, historico)
-                VALUES (%s, %s)
-                ON CONFLICT (chat_id)
-                DO UPDATE SET historico = EXCLUDED.historico;
-            """, (chat_id, novo_historico))
-            conn.commit()
-
             send_message(chat_id, reply)
 
         except Exception as e:
@@ -89,6 +81,7 @@ def send_message(chat_id, text):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
 
 
 
